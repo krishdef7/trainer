@@ -340,6 +340,7 @@ this is not: valid: yaml: content
 				CertManagement:   defaultCertManagement,
 				ClientConnection: defaultClientConnection,
 				StatusServer:     defaultStatusServer,
+				EnableHTTP2:      ptr.To(false),
 			},
 			wantOptions: defaultOptions,
 		},
@@ -354,6 +355,7 @@ this is not: valid: yaml: content
 				CertManagement:   defaultCertManagement,
 				ClientConnection: defaultClientConnection,
 				StatusServer:     defaultStatusServer,
+				EnableHTTP2:      ptr.To(false),
 			},
 			wantOptions: defaultOptions,
 		},
@@ -395,6 +397,7 @@ this is not: valid: yaml: content
 					Burst: ptr.To[int32](200),
 				},
 				StatusServer: defaultStatusServer,
+				EnableHTTP2:  ptr.To(false),
 			},
 			wantOptions: ctrl.Options{
 				HealthProbeBindAddress: ":8082",
@@ -420,6 +423,7 @@ this is not: valid: yaml: content
 				CertManagement:   defaultCertManagement,
 				ClientConnection: defaultClientConnection,
 				StatusServer:     defaultStatusServer,
+				EnableHTTP2:      ptr.To(false),
 				LeaderElection: &componentconfigv1alpha1.LeaderElectionConfiguration{
 					LeaderElect:       ptr.To(true),
 					ResourceName:      "trainer-leader",
@@ -461,6 +465,7 @@ this is not: valid: yaml: content
 				CertManagement:   defaultCertManagement,
 				ClientConnection: defaultClientConnection,
 				StatusServer:     defaultStatusServer,
+				EnableHTTP2:      ptr.To(false),
 				Controller: &configapi.ControllerConfigurationSpec{
 					GroupKindConcurrency: map[string]int32{
 						"TrainJob.trainer.kubeflow.org":               10,
@@ -499,6 +504,7 @@ this is not: valid: yaml: content
 				Health:           defaultHealth,
 				ClientConnection: defaultClientConnection,
 				StatusServer:     defaultStatusServer,
+				EnableHTTP2:      ptr.To(false),
 				CertManagement: &configapi.CertManagement{
 					Enable:             ptr.To(true),
 					WebhookServiceName: "custom-webhook-service",
@@ -517,6 +523,7 @@ this is not: valid: yaml: content
 				Health:           defaultHealth,
 				ClientConnection: defaultClientConnection,
 				StatusServer:     defaultStatusServer,
+				EnableHTTP2:      ptr.To(false),
 				CertManagement: &configapi.CertManagement{
 					Enable:             ptr.To(false),
 					WebhookServiceName: "kubeflow-trainer-controller-manager",
@@ -539,6 +546,7 @@ this is not: valid: yaml: content
 				CertManagement:   defaultCertManagement,
 				ClientConnection: defaultClientConnection,
 				StatusServer:     defaultStatusServer,
+				EnableHTTP2:      ptr.To(false),
 			},
 			wantOptions: ctrl.Options{
 				HealthProbeBindAddress: ":8081",
@@ -567,6 +575,7 @@ this is not: valid: yaml: content
 				CertManagement:   defaultCertManagement,
 				ClientConnection: defaultClientConnection,
 				StatusServer:     defaultStatusServer,
+				EnableHTTP2:      ptr.To(false),
 			},
 			wantOptions: ctrl.Options{
 				HealthProbeBindAddress: ":8081",
@@ -597,6 +606,7 @@ this is not: valid: yaml: content
 					QPS:   ptr.To[float32](1),
 					Burst: ptr.To[int32](2),
 				},
+				EnableHTTP2: ptr.To(false),
 			},
 			wantOptions: ctrl.Options{
 				HealthProbeBindAddress: ":8081",
@@ -626,6 +636,7 @@ this is not: valid: yaml: content
 				CertManagement:   defaultCertManagement,
 				ClientConnection: defaultClientConnection,
 				StatusServer:     defaultStatusServer,
+				EnableHTTP2:      ptr.To(false),
 			},
 			wantOptions: ctrl.Options{
 				HealthProbeBindAddress: ":9090",
@@ -673,6 +684,7 @@ this is not: valid: yaml: content
 					QPS:   ptr.To[float32](1),
 					Burst: ptr.To[int32](2),
 				},
+				EnableHTTP2: ptr.To(false),
 			},
 			wantOptions: ctrl.Options{
 				HealthProbeBindAddress: ":8081",
@@ -730,7 +742,7 @@ this is not: valid: yaml: content
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			options, cfg, err := Load(testScheme, tc.configFile, false)
+			options, cfg, err := Load(testScheme, tc.configFile)
 			if tc.wantErr {
 				if err == nil {
 					t.Fatal("Expected error but got none")
@@ -803,27 +815,50 @@ func TestLoadHTTP2(t *testing.T) {
 	if err := configapi.AddToScheme(testScheme); err != nil {
 		t.Fatal(err)
 	}
+	tmpDir := t.TempDir()
+
+	http2EnabledConfig := filepath.Join(tmpDir, "http2-enabled.yaml")
+	if err := os.WriteFile(http2EnabledConfig, []byte(`
+apiVersion: config.trainer.kubeflow.org/v1alpha1
+kind: Configuration
+enableHTTP2: true
+`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	http2DisabledConfig := filepath.Join(tmpDir, "http2-disabled.yaml")
+	if err := os.WriteFile(http2DisabledConfig, []byte(`
+apiVersion: config.trainer.kubeflow.org/v1alpha1
+kind: Configuration
+enableHTTP2: false
+`), 0600); err != nil {
+		t.Fatal(err)
+	}
 
 	testcases := []struct {
 		name        string
-		enableHTTP2 bool
+		configFile  string
 		wantTLSOpts bool
 	}{
 		{
 			name:        "HTTP/2 disabled sets TLSOpts",
-			enableHTTP2: false,
+			configFile:  http2DisabledConfig,
 			wantTLSOpts: true,
 		},
 		{
 			name:        "HTTP/2 enabled does not set TLSOpts",
-			enableHTTP2: true,
+			configFile:  http2EnabledConfig,
 			wantTLSOpts: false,
 		},
+		{
+			name:        "HTTP/2 defaults to disabled",
+			configFile:  "",
+			wantTLSOpts: true,
+		},
 	}
-
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			options, _, err := Load(testScheme, "", tc.enableHTTP2)
+			options, _, err := Load(testScheme, tc.configFile)
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}

@@ -68,6 +68,14 @@ type Configuration struct {
 	// default enablement status of a feature.
 	// +optional
 	FeatureGates map[string]bool `json:"featureGates,omitempty"`
+
+	// enableHTTP2 controls whether HTTP/2 is enabled for the metrics and webhook servers.
+	// Disabling HTTP/2 mitigates CVE-2023-44487 and CVE-2023-39325 (HTTP/2 Stream
+	// Cancellation and Rapid Reset attacks).
+	// Defaults to false.
+	// +optional
+	// +kubebuilder:default=false
+	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"`
 }
 
 // ControllerWebhook defines the webhook server for the controller.

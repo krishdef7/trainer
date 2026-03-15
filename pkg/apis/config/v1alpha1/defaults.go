@@ -73,4 +73,7 @@ func SetDefaults_Configuration(cfg *Configuration) {
 	if cfg.StatusServer.Burst == nil {
 		cfg.StatusServer.Burst = ptr.To[int32](10)
 	}
+	if cfg.EnableHTTP2 == nil {
+		cfg.EnableHTTP2 = ptr.To(false)
+	}
 }

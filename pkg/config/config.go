@@ -48,10 +48,10 @@ func fromFile(path string, scheme *runtime.Scheme, cfg *configapi.Configuration)
 }
 
 // addTo applies the configuration to controller runtime Options.
-func addTo(o *ctrl.Options, cfg *configapi.Configuration, enableHTTP2 bool) {
+func addTo(o *ctrl.Options, cfg *configapi.Configuration) {
 	// Set metrics server options
 	var tlsOpts []func(*tls.Config)
-	if !enableHTTP2 {
+	if cfg.EnableHTTP2 == nil || !*cfg.EnableHTTP2 {
 		// Disable http/2 for security reasons (CVE-2023-44487, CVE-2023-39325)
 		tlsOpts = append(tlsOpts, func(c *tls.Config) {
 			c.NextProtos = []string{"http/1.1"}
@@ -105,7 +105,7 @@ func addTo(o *ctrl.Options, cfg *configapi.Configuration, enableHTTP2 bool) {
 
 // Load loads configuration from file and returns controller Options and Configuration.
 // If configFile is empty, default configuration is used.
-func Load(scheme *runtime.Scheme, configFile string, enableHTTP2 bool) (ctrl.Options, configapi.Configuration, error) {
+func Load(scheme *runtime.Scheme, configFile string) (ctrl.Options, configapi.Configuration, error) {
 	options := ctrl.Options{
 		Scheme: scheme,
 	}
@@ -128,7 +128,7 @@ func Load(scheme *runtime.Scheme, configFile string, enableHTTP2 bool) (ctrl.Opt
 	}
 
 	// Apply configuration to options
-	addTo(&options, &cfg, enableHTTP2)
+	addTo(&options, &cfg)
 
 	return options, cfg, nil
 }
